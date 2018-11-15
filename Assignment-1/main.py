@@ -202,79 +202,87 @@ def local_sequence_alignment(sequence1, sequence2, gap_openning, gap_extention, 
     # Upper level
     S_upper = deepcopy(S)
 
+    # Initialize parents to None
+    S = [[(None, 0)] * (length_2 + 1) for _ in range(length_1 + 1)]
+    for i in range(1, length_1 + 1):
+        S[i][0] = (None, S_upper[i][0])
+
+    for j in range(1, length_2 + 1):
+        S[0][j] = (None, S_upper[0][j])
+
     i = 1
     j = 1
-
-    back_tracking = [[None] * length_2 for _ in range(length_1)]
 
     for i in range(1, length_1 + 1):
         for j in range(1, length_2 + 1):
             # Update S_upper
             S_upper[i][j] = max(S_upper[i - 1][j] -
-                                gap_extention, S[i - 1][j] - gap_openning)
+                                gap_extention, S[i - 1][j][1] - gap_openning)
 
             # Update S_lower
             S_lower[i][j] = max(S_lower[i][j - 1] -
-                                gap_extention, S[i][j - 1] - gap_openning)
+                                gap_extention, S[i][j - 1][1] - gap_openning)
 
             # Update S main
-            S[i][j] = max(0, max(S[i - 1][j - 1] + scoring_function[(sequence1[i - 1],
-                                                                     sequence2[j - 1])], max(S_lower[i][j], S_upper[i][j])))
+            S[i][j] = (None, max(0, max(S[i - 1][j - 1][1] + scoring_function[(sequence1[i - 1],
+                                                                               sequence2[j - 1])], max(S_lower[i][j], S_upper[i][j]))))
 
             # Save where S[i][j] is coming
-            if S[i][j] == S[i - 1][j - 1] + scoring_function[(sequence1[i - 1], sequence2[j - 1])]:
-                back_tracking[i - 1][j - 1] = "MAIN"
-            elif S[i][j] == S_lower[i][j]:
-                back_tracking[i - 1][j - 1] = "LOWER"
-            elif S[i][j] == S_upper[i][j]:
-                back_tracking[i - 1][j - 1] = "UPPER"
+            if S[i][j][1] == S[i - 1][j - 1][1] + scoring_function[(sequence1[i - 1], sequence2[j - 1])]:
+                S[i][j] = ("MAIN", S[i][j][1])
+            elif S[i][j][1] == S_lower[i][j]:
+                S[i][j] = ("LOWER", S[i][j][1])
+            elif S[i][j][1] == S_upper[i][j]:
+                S[i][j] = ("UPPER", S[i][j][1])
 
     # Back tracking function
-    def back_track(seq1, seq2, back_tracking, maxi, maxj):
+    def back_track(seq1, seq2, maxi, maxj, S):
         aligned_seq1 = ""
         aligned_seq2 = ""
 
         i = maxi
         j = maxj
 
-        while i > -1 and j > -1:
-            move = back_tracking[i][j]
+        move = S[i][j][0]
+    
+        while move:
 
             if move == "MAIN":
-                aligned_seq1 = seq1[i] + aligned_seq1
-                aligned_seq2 = seq2[j] + aligned_seq2
+                aligned_seq1 = seq1[i - 1] + aligned_seq1
+                aligned_seq2 = seq2[j - 1] + aligned_seq2
                 i -= 1
                 j -= 1
             elif move == "LOWER":
                 aligned_seq1 = "_" + aligned_seq1
-                aligned_seq2 = seq2[j] + aligned_seq2
+                aligned_seq2 = seq2[j - 1] + aligned_seq2
                 j -= 1
             elif move == "UPPER":
-                aligned_seq1 = seq1[i] + aligned_seq1
+                aligned_seq1 = seq1[i - 1] + aligned_seq1
                 aligned_seq2 = "_" + aligned_seq2
                 i -= 1
-            else:
-                break
+    
+            move = S[i][j][0]
 
         return aligned_seq1, aligned_seq2
 
+    # Find maximum scor in the matrix
     def find_maxij(matrix):
-        max_ = matrix[0][0]
+        max_ = matrix[0][0][1]
         maxi = 0
         maxj = 0
 
         for i in range(len(matrix)):
             for j in range(len(matrix[0])):
-                if matrix[i][j] > max_:
-                    max_ = matrix[i][j]
+                if matrix[i][j][1] > max_:
+                    max_ = matrix[i][j][1]
                     maxi = i
                     maxj = j
 
-        return maxi - 1, maxj - 1
+        return maxi, maxj
 
     maxi, maxj = find_maxij(S)
 
-    return S[-1][-1], back_track(sequence1, sequence2, back_tracking, maxi, maxj), S
+    return S[maxi][maxj], back_track(sequence1, sequence2, maxi, maxj, S), S
 
 
 def read_pairs(filename):
@@ -345,7 +353,7 @@ if __name__ == "__main__":
         print("Score: {}".format(score))
         print("Sequence 1: {}".format(aligneds[0]))
         print("Sequence 2: {}".format(aligneds[1]))
-        # for line in S:
+        #for line in S:
         #    print(line)
 
         write_aligned_pairs(
@@ -353,11 +361,11 @@ if __name__ == "__main__":
         score, aligneds, S = local_sequence_alignment(list(seq1), list(
             seq2), gap_openning, gap_extention, scoring_function)
         print("Local Alignment")
-        print("Score: {}".format(score))
+        print("Score: {}".format(score[1]))
         print("Sequence 1: {}".format(aligneds[0]))
         print("Sequence 2: {}".format(aligneds[1]))
         write_aligned_pairs(tests[i][:-4] + "-local-result",
-                            aligneds[0], aligneds[1], score)
-        # for line in S:
+                            aligneds[0], aligneds[1], score[1])
+        #for line in S:
         #    print(line)
         i += 1
