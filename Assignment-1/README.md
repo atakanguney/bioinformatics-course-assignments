@@ -10,6 +10,8 @@ For detailed list of my conda environment packages is [here](requirements.txt).
 ## How to run program
 
 -   Usage of alignments
+    - Template
+        - `python PairwiseAlignment.py "sequence-filename" "gap-opening" "gap-extention" "method"`
     -   Using script to get output, on the command line, run the command
         - Example usage
         - `python PairwiseAlignment.py test-pair1.txt 11 1 global`
